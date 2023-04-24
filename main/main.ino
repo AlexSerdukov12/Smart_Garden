@@ -1,25 +1,23 @@
 #include "KY015_Sensor.h"
 #include "FanControl.h"
 #include "WaterLevelSensor.h"
-//// ph 
-float calibration_value = 21.34-0.7 ;
-int phval = 0; 
-unsigned long int avgval; 
-int buffer_arr[10],temp;
-
-float ph_act;
-///////
-int pH_Value; 
-float Voltage;
-////
-
+#include "PHSensor.h"
+////PINS
 const int LDRInput = A0; //Set Analog Input A0 for LDR.
+const int PH_SENSOR_PIN = A1;
 const int LED = 2;
 const int WATER_SENSOR_PIN = A5;
 
+//// some variables
+float PH_CALIBRATION_VALUE = 21.34 - 0.7;
+
+////// objects
 KY015_Sensor ky015Sensor(10);
 FanControl fanControl(9, 8, 7, 6);
 WaterLevelSensor waterLevelSensor(WATER_SENSOR_PIN);
+PHSensor phSensor(PH_SENSOR_PIN, PH_CALIBRATION_VALUE);
+///////
+
 
 void setup() {
   Serial.begin(9600);
@@ -27,28 +25,25 @@ void setup() {
   pinMode(LDRInput, INPUT);
   pinMode(LED, OUTPUT);
   waterLevelSensor.begin();
-/////////PH??
 
-/////////////////
 
 }
 
 void loop() {
+
+  ///// TEMP and Humidity
   float temperature = ky015Sensor.getTemperature();
   float humidity = ky015Sensor.getHumidity();
-
-  Serial.print("Temperature: ");
-  Serial.print(temperature);
-  Serial.println("°C");
-
-  Serial.print("Humidity: ");
-  Serial.print(humidity);
-  Serial.println("%");
-
   if (ky015Sensor.isError()) {
     Serial.println("Error: KY015 Sensor not found.");
     fanControl.update(0);
   } else {
+    Serial.print("Temperature: ");
+    Serial.print(temperature);
+    Serial.println("°C");
+    Serial.print("Humidity: ");
+    Serial.print(humidity);
+    Serial.println("%");
     fanControl.update(temperature);
   }
 
@@ -62,7 +57,7 @@ void loop() {
     waterLevelSensor.getCurrentLevel();
   }
 
-  /////////////////////////////////
+  ///////////////////////////////// LDR + RELAY FOR LEDS
 
 
   int value = analogRead(LDRInput); //Reads the Value of LDR(light).
@@ -81,32 +76,12 @@ void loop() {
   }
 
 ////////////////////////////////PH SENSOR
+  if(phSensor.getPHValue()<2||phSensor.getPHValue()>12 ) {    Serial.println("Error: PH sensor not working properly.");
+  }
+  else{Serial.print("PH value:");
+  Serial.println(phSensor.getPHValue());
+  }
 
- for(int i=0;i<10;i++) 
- { 
- buffer_arr[i]=analogRead(A1);
- delay(30);
- }
- for(int i=0;i<9;i++)
- {
- for(int j=i+1;j<10;j++)
- {
- if(buffer_arr[i]>buffer_arr[j])
- {
- temp=buffer_arr[i];
- buffer_arr[i]=buffer_arr[j];
- buffer_arr[j]=temp;
- }
- }
- }
- avgval=0;
- for(int i=2;i<8;i++)
- avgval+=buffer_arr[i];
- float volt=(float)avgval*5.0/1024/6; 
-  ph_act = -5.5 * volt + calibration_value;
-
- Serial.print("pH Val: ");
- Serial.println(ph_act);
 ///////////////////////////////////////////////
   Serial.println("-----------------------------------------------------------");
 
